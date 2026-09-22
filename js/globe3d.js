@@ -15,7 +15,7 @@ class LEAGlobe3D {
       initialDistance: 23,
       minDistance: 11.5,
       maxDistance: 45,
-      autoRotateSpeed: 0.0012,
+     autoRotateSpeed: 0, // rotation automatique désactivé
       onSiteSelect: null,
       onCameraMove: null
     }, options);
