@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LAGUNES EXPLORATION AFRIQUE (LEA) — Visualisation 3D & Cartographie</title>
+  <meta name="description" content="Globe 3D interactif et cartographie des sites miniers de Lagunes Exploration Afrique (LEA). Informations résumées pour le public non-expert.">
+  <meta name="theme-color" content="#070c18">
+
+  <!-- Feuilles de style Leaflet & Application -->
+  <link rel="stylesheet" href="libs/leaflet/leaflet.css">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+  <!-- CONTENEUR DU VIEWPORT (CARTES 3D & 2D) -->
+  <div id="app-viewport">
+    
+    <!-- VUE 3D DU GLOBE (STYLE GOOGLE EARTH) -->
+    <div id="globe-3d-container" class="map-viewport active"></div>
+
+    <!-- VUE 2D DU PLAN & SATELLITE (STYLE GOOGLE MAPS) -->
+    <div id="map-2d-container" class="map-viewport"></div>
+
+    <!-- BARRE SUPÉRIEURE FLOTTANTE (STYLE GOOGLE MAPS) -->
+    <header class="top-bar-floating">
+      <!-- Logo LEA & Recherche -->
+      <div class="search-card-wrapper">
+        <div class="brand-badge">
+          <div class="brand-logo-circle">LEA</div>
+          <div class="brand-text-name">Lagunes Exploration</div>
+        </div>
+        <div class="search-input-box">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="global-search-input" placeholder="Rechercher un site ou minerai (ex: Bongouanou, Or, Lithium)..." autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Bascule : Globe 3D / Carte 2D -->
+      <div class="view-mode-pill">
+        <button id="btn-view-3d" class="view-btn active" title="Vue de la Terre en 3D (Google Earth)">
+          🌐 <span>Globe 3D</span>
+        </button>
+        <button id="btn-view-2d" class="view-btn" title="Vue Satellite & Cartographique 2D">
+          🗺️ <span>Carte 2D</span>
+        </button>
+      </div>
+
+      <!-- Boutons d'Action : Visite & Guide -->
+      <div class="top-actions-cluster">
+        <button id="btn-start-tour" class="action-pill-btn tour-btn" title="Lancer un survol automatique des sites">
+          ▶ Visite Guidée 3D
+        </button>
+        <button id="btn-open-edu" class="action-pill-btn edu-btn" title="Comprendre l'exploration (en 1 minute)">
+          🎓 Guide Vulgarisé
+        </button>
+        <button id="btn-share-wa" class="action-pill-btn" style="background:#15803d; border-color:#22c55e;" title="Partager sur WhatsApp">
+          📲 Partager
+        </button>
+      </div>
+    </header>
+
+    <!-- FILTRES FLOTTANTS RAPIDES -->
+    <div class="filter-chips-floating">
+      <button class="filter-chip active" data-filter="all">Tous les sites</button>
+      <button class="filter-chip" data-filter="wip">⛏ Forages en cours</button>
+      <button class="filter-chip" data-filter="ok">✓ Phase validée</button>
+      <button class="filter-chip" data-filter="todo">🔍 Prospection initiale</button>
+      <button class="filter-chip" data-filter="gold">🏆 Or (Au)</button>
+      <button class="filter-chip" data-filter="lithium">🔋 Lithium (Li)</button>
+    </div>
+
+    <!-- ASTUCE D'INTERACTION 3D -->
+    <div class="hint-3d-overlay">
+      <span>🖱️ Glisser pour orbiter • Clic droit pour incliner • Molette pour zoomer</span>
+    </div>
+
+    <!-- BANNIÈRE LORS D'UN TOUR VIRTUEL 3D -->
+    <div id="tour-indicator-banner" style="display:none; position:absolute; top:120px; left:50%; transform:translateX(-50%); background:rgba(14,24,46,0.92); backdrop-filter:blur(12px); border:1px solid var(--blue-sky); border-radius:999px; padding:8px 20px; font-size:0.82rem; font-weight:700; color:#fff; z-index:1500; box-shadow:0 8px 24px rgba(0,0,0,0.6); align-items:center; gap:10px;">
+      <span style="color:var(--blue-sky); animation:pulseGold 1.2s infinite;">● VISITE EN COURS</span>
+      <span id="tour-banner-title">Survol de la concession...</span>
+    </div>
+
+    <!-- NAVIGATION 3D DROITE (BOUSSOLE & ZOOM) -->
+    <div class="navigation-cluster-right">
+      <div id="nav-compass-btn" class="compass-widget" title="Réaligner vers le Nord">
+        <div class="compass-needle"></div>
+      </div>
+      <div class="nav-btn-group">
+        <button id="nav-zoom-in" class="nav-icon-btn" title="Zoom avant">+</button>
+        <button id="nav-zoom-out" class="nav-icon-btn" title="Zoom arrière">−</button>
+        <button id="nav-home-btn" class="nav-icon-btn" title="Recentrer sur la Côte d'Ivoire">⌂</button>
+      </div>
+    </div>
+
+    <!-- CARROUSEL DES SITES EN BAS (STYLE GOOGLE MAPS) -->
+    <div id="bottom-carousel" class="bottom-carousel-wrapper"></div>
+
+    <!-- TIROIR LATÉRAL GAUCHE D'INSPECTION RÉSUMÉE DU SITE -->
+    <aside id="site-drawer" class="site-drawer">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <span id="drawer-site-badge" class="card-badge badge-wip">En cours</span>
+          <h2 id="drawer-site-title">Bongouanou</h2>
+          <p id="drawer-site-region">Région du Moronou</p>
+        </div>
+        <button id="drawer-close-btn" class="drawer-close-btn" title="Fermer la fiche">✕</button>
+      </div>
+
+      <div class="drawer-content">
+        <!-- Chiffres clés en pastilles nettes -->
+        <div class="drawer-section">
+          <div class="drawer-section-title">📊 Chiffres Clés du Projet</div>
+          <div class="key-stats-grid">
+            <div class="stat-box">
+              <div class="stat-label">Permis Officiel</div>
+              <div id="stat-permit" class="stat-val">PR-084</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Superficie</div>
+              <div id="stat-area" class="stat-val">280 km²</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Forages Réalisés</div>
+              <div id="stat-drilled" class="stat-val" style="color:var(--gold);">1 850 m</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Minerai Cible</div>
+              <div id="stat-mineral" class="stat-val" style="font-size:0.95rem;">Or (Au)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Résumé en 1 phrase -->
+        <div class="drawer-section">
+          <div class="drawer-section-title">📝 En Bref (Vulgarisé)</div>
+          <p id="drawer-site-summary" style="font-size:0.86rem; line-height:1.5; color:#cbd5e1;"></p>
+        </div>
+
+        <!-- Travaux en cours (2 puces claires) -->
+        <div class="drawer-section">
+          <div class="drawer-section-title">🔍 Travaux Géologiques Récents</div>
+          <ul id="drawer-work-list" class="work-list"></ul>
+        </div>
+
+        <!-- Engagement Vert & RSE -->
+        <div class="drawer-section">
+          <div class="drawer-section-title">🌱 Garantie Environnement &amp; RSE</div>
+          <div class="rse-box" id="drawer-env-text"></div>
+        </div>
+
+        <!-- Partager le site sur WhatsApp -->
+        <div class="drawer-section">
+          <a id="drawer-wa-btn" href="#" target="_blank" rel="noopener" style="display:flex; align-items:center; justify-content:center; gap:8px; background:#25D366; color:#fff; padding:12px; border-radius:8px; text-decoration:none; font-weight:700; font-size:0.85rem; box-shadow:0 4px 12px rgba(37,211,102,0.3);">
+            📲 Partager ce site sur WhatsApp
+          </a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MODALE PÉDAGOGIQUE VULGARISÉE (GUIDE NON-EXPERT) -->
+    <div id="modal-edu-overlay" class="modal-overlay">
+      <div class="modal-window" style="max-width:760px;">
+        <div class="modal-header">
+          <div>
+            <h3>🎓 Comprendre l'Exploration Minière (Guide Rapide)</h3>
+            <p style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">
+              L'essentiel pour comprendre les travaux de Lagunes Exploration Afrique en 1 minute
+            </p>
+          </div>
+          <button id="modal-edu-close" class="drawer-close-btn" title="Fermer">✕</button>
+        </div>
+
+        <div class="modal-body" id="guide-steps-container"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LIBRAIRIES LOCALES : THREE.JS (3D) & LEAFLET (2D) -->
+  <script src="libs/three/three.min.js"></script>
+  <script src="libs/leaflet/leaflet.js"></script>
+
+  <!-- SCRIPTS APPLICATIFS LEA -->
+  <script src="js/data.js"></script>
+  <script src="js/textures_base64.js"></script>
+  <script src="js/globe3d.js"></script>
+  <script src="js/map2d.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
